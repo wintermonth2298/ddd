@@ -4,38 +4,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/domain"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/mapping"
 )
 
-type slidesRepo interface {
-	GetSlidesByCaseID(ctx context.Context, caseID uuid.UUID) ([]domain.Slide, error)
-}
-
-type casesRepo interface {
-	GetCase(ctx context.Context, caseID uuid.UUID) (domain.Case, error)
-}
-
 type CaseProjector struct {
-	db         *sqlx.DB
-	slidesRepo slidesRepo
-	casesRepo  casesRepo
-	service    *domain.Service
+	db      *sqlx.DB
+	service *domain.Service
 }
 
-func NewCaseProjectior(
-	db *sqlx.DB,
-	service *domain.Service,
-	slidesRepo slidesRepo,
-	casesRepo casesRepo,
-) *CaseProjector {
+func NewCaseProjectior(db *sqlx.DB, service *domain.Service) *CaseProjector {
 	return &CaseProjector{
-		db:         db,
-		service:    service,
-		slidesRepo: slidesRepo,
-		casesRepo:  casesRepo,
+		db:      db,
+		service: service,
 	}
 }
 
@@ -45,7 +27,7 @@ type CaseProjection struct {
 }
 
 func (p *CaseProjector) HandleSlideCreated(ctx context.Context, event domain.Event) error {
-	projection, err := p.buildCaseProjection(ctx, event.CaseID)
+	projection, err := p.buildCaseProjection(event)
 	if err != nil {
 		return fmt.Errorf("build case projection: %w", err)
 	}
@@ -65,7 +47,7 @@ func (p *CaseProjector) HandleSlideCreated(ctx context.Context, event domain.Eve
 }
 
 func (p *CaseProjector) HandleSlideUpdated(ctx context.Context, event domain.Event) error {
-	projection, err := p.buildCaseProjection(ctx, event.CaseID)
+	projection, err := p.buildCaseProjection(event)
 	if err != nil {
 		return fmt.Errorf("build case projection: %w", err)
 	}
@@ -85,21 +67,19 @@ func (p *CaseProjector) HandleSlideUpdated(ctx context.Context, event domain.Eve
 	return nil
 }
 
-func (p *CaseProjector) buildCaseProjection(ctx context.Context, caseID uuid.UUID) (CaseProjection, error) {
-	c, err := p.casesRepo.GetCase(ctx, caseID)
-	if err != nil {
-		return CaseProjection{}, fmt.Errorf("get case: %w", err)
+func (p *CaseProjector) buildCaseProjection(event domain.Event) (CaseProjection, error) {
+	switch e := event.(type) {
+	case domain.EventSlideCreated:
+		return CaseProjection{
+			ID:     e.CaseID.String(),
+			Status: mapping.ToModelCasePreparationStatus(e.CasePreparationStatus),
+		}, nil
+	case domain.EvenSlideFinished:
+		return CaseProjection{
+			ID:     e.CaseID.String(),
+			Status: mapping.ToModelCasePreparationStatus(e.CasePreparationStatus),
+		}, nil
 	}
 
-	slides, err := p.slidesRepo.GetSlidesByCaseID(ctx, caseID)
-	if err != nil {
-		return CaseProjection{}, fmt.Errorf("get slides by case id: %w", err)
-	}
-
-	status := p.service.CasePreparationStatus(ctx, slides)
-
-	return CaseProjection{
-		ID:     c.ID.String(),
-		Status: mapping.ToModelCasePreparationStatus(status),
-	}, nil
+	return CaseProjection{}, fmt.Errorf("unknown event: %s", event.Name())
 }

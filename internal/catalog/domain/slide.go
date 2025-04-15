@@ -2,7 +2,6 @@ package domain
 
 import (
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -18,41 +17,13 @@ type Slide struct {
 	events []Event
 }
 
-func CreateSlide(caseID uuid.UUID) Slide {
-	id := uuid.New()
-
-	s := Slide{
-		ID:                id,
-		Version:           0,
-		PreparationStatus: SlidePreparationStatusNotStarted,
-		CaseID:            caseID,
-	}
-
-	s.addEvent(EventTypeSlideCreated)
-
-	return s
-}
-
-func (s *Slide) Finish() {
-	s.PreparationStatus = SlidePreparationStatusDone
-
-	s.addEvent(EventTypeSlideUpdated)
-}
-
 func (s *Slide) PullEvents() []Event {
 	out := s.events
 	s.events = nil
 	return out
 }
 
-func (s *Slide) addEvent(eventType EventType) {
-	event := Event{
-		ID:        uuid.New(),
-		SlideID:   s.ID,
-		CaseID:    s.CaseID,
-		Type:      eventType,
-		CreatedAt: time.Now(),
-	}
+func (s *Slide) addEvent(event Event) {
 	s.events = append(s.events, event)
 }
 

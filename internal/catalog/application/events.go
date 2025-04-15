@@ -46,9 +46,9 @@ func (p *eventsProcessor) Process(ctx context.Context) error {
 
 func (p *eventsProcessor) publish(ctx context.Context, events []domain.Event) error {
 	for _, e := range events {
-		for _, handler := range p.handlers[e.Type] {
+		for _, handler := range p.handlers[e.EventType()] {
 			if err := handler(ctx, e); err != nil {
-				return fmt.Errorf("handle event %v: %w", e.Type, err)
+				return fmt.Errorf("handle event %v: %w", e.Name(), err)
 			}
 		}
 	}

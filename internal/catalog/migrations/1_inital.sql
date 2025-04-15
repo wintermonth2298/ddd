@@ -17,10 +17,9 @@ CREATE TABLE slides (
 CREATE TABLE events (
     id UUID PRIMARY KEY,
     type SMALLINT NOT NULL,
-    case_id UUID REFERENCES cases(id) ON DELETE CASCADE,
-    slide_id UUID REFERENCES slides(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    published BOOLEAN NOT NULL
+    published BOOLEAN NOT NULL,
+    payload JSONB NOT NULL
 );
 
 CREATE TABLE case_projections (

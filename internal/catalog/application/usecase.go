@@ -18,6 +18,7 @@ type casesRepo interface {
 type slidesRepo interface {
 	GetSlide(ctx context.Context, id uuid.UUID) (domain.Slide, error)
 	SaveSlide(ctx context.Context, s domain.Slide) error
+	GetSlidesByCaseID(ctx context.Context, caseID uuid.UUID) ([]domain.Slide, error)
 }
 
 type eventsStorage interface {
@@ -35,16 +36,18 @@ type storage interface {
 	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
-func NewUsecases(storage storage) *Usecases {
+func NewUsecases(storage storage, service *domain.Service) *Usecases {
 	return &Usecases{
 		storage:         storage,
 		eventsProcessor: newEventsProcessor(storage),
+		service:         service,
 	}
 }
 
 type Usecases struct {
 	storage         storage
 	eventsProcessor *eventsProcessor
+	service         *domain.Service
 }
 
 func (u *Usecases) CreateCase(ctx context.Context) error {
@@ -58,9 +61,14 @@ func (u *Usecases) CreateCase(ctx context.Context) error {
 
 func (u *Usecases) AddSlide(ctx context.Context, caseID uuid.UUID) error {
 	return u.storage.WithTx(ctx, func(ctx context.Context) error {
-		slide := domain.CreateSlide(caseID)
+		caseSlides, err := u.storage.GetSlidesByCaseID(ctx, caseID)
+		if err != nil {
+			return fmt.Errorf("get slides by id: %w", err)
+		}
 
-		_, err := u.storage.GetCase(ctx, caseID)
+		slide := u.service.CreateSlide(caseID, caseSlides)
+
+		_, err = u.storage.GetCase(ctx, caseID)
 		if err != nil {
 			return fmt.Errorf("get case: %w", err)
 		}
@@ -84,7 +92,12 @@ func (u *Usecases) FinishSlide(ctx context.Context, slideID uuid.UUID) error {
 			return fmt.Errorf("get slide: %w", err)
 		}
 
-		slide.Finish()
+		caseSlides, err := u.storage.GetSlidesByCaseID(ctx, slide.CaseID)
+		if err != nil {
+			return fmt.Errorf("get slides by id: %w", err)
+		}
+
+		slide = u.service.FinishSlide(slide, slide.CaseID, caseSlides)
 
 		if err := u.storage.AddEvent(ctx, slide.PullEvents()); err != nil {
 			return fmt.Errorf("add events: %w", err)

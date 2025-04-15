@@ -3,6 +3,7 @@ package psql
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -18,9 +19,9 @@ func NewTxManager(db *sqlx.DB) *TxManager {
 }
 
 func (u *TxManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
-	tx, err := u.db.BeginTx(ctx, nil)
+	tx, err := u.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("begin transaction: %w", err)
 	}
 
 	txCtx := context.WithValue(ctx, txKey{}, tx)

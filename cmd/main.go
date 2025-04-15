@@ -29,11 +29,10 @@ func main() {
 
 	service := domain.NewService()
 
-	caseProjector := projection.NewCaseProjectior(db, service, slidesRepoSQL, casesRepoSQL)
-
-	usecases := application.NewUsecases(storage)
+	caseProjector := projection.NewCaseProjectior(db, service)
+	usecases := application.NewUsecases(storage, service)
 	usecases.RegisterEventHandler(domain.EventTypeSlideCreated, caseProjector.HandleSlideCreated)
-	usecases.RegisterEventHandler(domain.EventTypeSlideUpdated, caseProjector.HandleSlideUpdated)
+	usecases.RegisterEventHandler(domain.EventTypeSlideFinished, caseProjector.HandleSlideUpdated)
 
 	usecases.StartEventsProcessor(5 * time.Second)
 
@@ -42,17 +41,17 @@ func main() {
 	// 	panic(err)
 	// }
 
-	// slideID, _ := uuid.Parse("6f52d738-53b5-461f-88b3-b26b37cdcebe")
-	// err := usecases.AddSlide(context.Background(), slideID)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	slideID, _ := uuid.Parse("6289620d-68bd-41a6-adac-41ede95bb16d")
-	err := usecases.FinishSlide(context.Background(), slideID)
+	slideID, _ := uuid.Parse("122c9557-784c-4fb2-a890-6f5a333505fb")
+	err := usecases.AddSlide(context.Background(), slideID)
 	if err != nil {
 		panic(err)
 	}
+
+	// slideID, _ := uuid.Parse("2cbf1bb7-5bb3-44a8-aae0-ef3a68f4a96c")
+	// err := usecases.FinishSlide(context.Background(), slideID)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	time.Sleep(50 * time.Second)
 }

@@ -52,6 +52,10 @@ func (s *Storage) FetchUnpublishedEvents(ctx context.Context, limit int) ([]doma
 	return s.eventsStorage.FetchUnpublished(ctx, limit)
 }
 
+func (s *Storage) GetSlidesByCaseID(ctx context.Context, caseID uuid.UUID) ([]domain.Slide, error) {
+	return s.slidesRepo.GetSlidesByCaseID(ctx, caseID)
+}
+
 func (s *Storage) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	return s.txManager.Do(ctx, fn)
 }

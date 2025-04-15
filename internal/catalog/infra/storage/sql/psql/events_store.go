@@ -26,7 +26,7 @@ func (s *EventsStorage) MarkPublished(ctx context.Context, events []domain.Event
 
 	ids := make([]string, 0, len(events))
 	for _, e := range events {
-		ids = append(ids, e.ID.String())
+		ids = append(ids, e.EventID().String())
 	}
 
 	const tmpl = `
@@ -52,7 +52,7 @@ func (s *EventsStorage) FetchUnpublished(ctx context.Context, limit int) ([]doma
 	exec := executor(ctx, s.db)
 
 	const query = `
-		SELECT id, type, created_at, published, case_id, slide_id
+		SELECT id, type, created_at, published, payload
 		FROM events
 		WHERE NOT published
 		ORDER BY created_at
@@ -67,7 +67,11 @@ func (s *EventsStorage) FetchUnpublished(ctx context.Context, limit int) ([]doma
 
 	domainEvents := make([]domain.Event, 0, len(events))
 	for _, e := range events {
-		domainEvents = append(domainEvents, mapping.ToDomainEvent(e))
+		e, err := mapping.ToDomainEvent(e)
+		if err != nil {
+			return nil, fmt.Errorf("map model->domain: %w", err)
+		}
+		domainEvents = append(domainEvents, e)
 	}
 
 	return domainEvents, nil
@@ -78,12 +82,16 @@ func (s *EventsStorage) Add(ctx context.Context, events []domain.Event) error {
 
 	eventModels := make([]mapping.EventModel, 0, len(events))
 	for _, event := range events {
-		eventModels = append(eventModels, mapping.ToModelEvent(event, false))
+		e, err := mapping.ToModelEvent(event, false)
+		if err != nil {
+			return fmt.Errorf("map domain->model: %w", err)
+		}
+		eventModels = append(eventModels, e)
 	}
 
 	const query = `
-		INSERT INTO events (id, type, created_at, published, case_id, slide_id)
-		VALUES (:id, :type, :created_at, :published, :case_id, :slide_id)
+		INSERT INTO events (id, type, created_at, published, payload)
+		VALUES (:id, :type, :created_at, :published, :payload)
 	`
 
 	for _, e := range eventModels {

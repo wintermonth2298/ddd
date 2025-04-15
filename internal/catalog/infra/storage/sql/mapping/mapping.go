@@ -1,8 +1,6 @@
 package mapping
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/domain"
 )
@@ -25,60 +23,6 @@ func ToModelCase(c domain.Case) CaseModel {
 	return CaseModel{
 		ID:      c.ID.String(),
 		Version: int(c.Version),
-	}
-}
-
-type EventModel struct {
-	ID        string    `db:"id"`
-	Type      uint8     `db:"type"`
-	CaseID    string    `db:"case_id"`
-	SlideID   string    `db:"slide_id"`
-	CreatedAt time.Time `db:"created_at"`
-	Published bool      `db:"published"`
-}
-
-func ToModelEvent(e domain.Event, published bool) EventModel {
-	var t uint8
-	switch e.Type {
-	case domain.EventTypeSlideCreated:
-		t = 1
-	case domain.EventTypeSlideUpdated:
-		t = 2
-	default:
-		t = 0
-	}
-
-	return EventModel{
-		ID:        e.ID.String(),
-		Type:      t,
-		CaseID:    e.CaseID.String(),
-		SlideID:   e.SlideID.String(),
-		CreatedAt: e.CreatedAt,
-		Published: published,
-	}
-}
-
-func ToDomainEvent(m EventModel) domain.Event {
-	id, _ := uuid.Parse(m.ID)
-	caseID, _ := uuid.Parse(m.CaseID)
-	slideID, _ := uuid.Parse(m.SlideID)
-
-	var t domain.EventType
-	switch m.Type {
-	case 1:
-		t = domain.EventTypeSlideCreated
-	case 2:
-		t = domain.EventTypeSlideUpdated
-	default:
-		t = domain.EventTypeUnknown
-	}
-
-	return domain.Event{
-		ID:        id,
-		Type:      t,
-		CaseID:    caseID,
-		SlideID:   slideID,
-		CreatedAt: m.CreatedAt,
 	}
 }
 
