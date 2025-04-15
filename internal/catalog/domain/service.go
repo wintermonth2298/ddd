@@ -22,11 +22,12 @@ func (s *Service) CreateSlide(caseID uuid.UUID, caseSlides []Slide) Slide {
 		PreparationStatus: SlidePreparationStatusNotStarted,
 	}
 
+	slides := append(caseSlides, slide)
 	slide.addEvent(EventSlideCreated{
 		ID:                    uuid.New(),
 		CreationTime:          time.Now(),
 		CaseID:                caseID,
-		CasePreparationStatus: s.casePreparationStatus(caseSlides),
+		CasePreparationStatus: s.casePreparationStatus(slides),
 	})
 
 	return slide
