@@ -10,7 +10,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/domain"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/mapping"
-	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/uow"
 )
 
 type CasesRepo struct {
@@ -22,7 +21,7 @@ func NewCasesRepo(db *sqlx.DB) *CasesRepo {
 }
 
 func (r *CasesRepo) GetCase(ctx context.Context, id uuid.UUID) (domain.Case, error) {
-	exec := uow.Executor(ctx, r.db)
+	exec := executor(ctx, r.db)
 
 	var model mapping.CaseModel
 	err := exec.GetContext(ctx, &model, `
@@ -41,7 +40,7 @@ func (r *CasesRepo) GetCase(ctx context.Context, id uuid.UUID) (domain.Case, err
 }
 
 func (r *CasesRepo) SaveCase(ctx context.Context, c domain.Case) error {
-	exec := uow.Executor(ctx, r.db)
+	exec := executor(ctx, r.db)
 
 	model := mapping.ToModelCase(c)
 

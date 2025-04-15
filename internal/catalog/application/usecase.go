@@ -21,41 +21,35 @@ type slidesRepo interface {
 }
 
 type eventsStorage interface {
-	Add(ctx context.Context, events []domain.Event) error
-	MarkPublished(ctx context.Context, events []domain.Event) error
-	FetchUnpublished(ctx context.Context, limit int) ([]domain.Event, error)
+	AddEvent(ctx context.Context, events []domain.Event) error
+	MarkEventPublished(ctx context.Context, events []domain.Event) error
+	FetchUnpublishedEvents(ctx context.Context, limit int) ([]domain.Event, error)
 }
 
-type uow interface {
-	Do(ctx context.Context, fn func(ctx context.Context) error) error
+type storage interface {
+	casesRepo
+	slidesRepo
+
+	eventsStorage
+
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
-func NewUsecases(
-	casesRepo casesRepo,
-	slidesRepo slidesRepo,
-	eventsStorage eventsStorage,
-	uow uow,
-) *Usecases {
+func NewUsecases(storage storage) *Usecases {
 	return &Usecases{
-		casesRepo:       casesRepo,
-		slidesRepo:      slidesRepo,
-		eventsStorage:   eventsStorage,
-		eventsProcessor: newEventsProcessor(eventsStorage),
-		uow:             uow,
+		storage:         storage,
+		eventsProcessor: newEventsProcessor(storage),
 	}
 }
 
 type Usecases struct {
-	casesRepo       casesRepo
-	slidesRepo      slidesRepo
-	eventsStorage   eventsStorage
+	storage         storage
 	eventsProcessor *eventsProcessor
-	uow             uow
 }
 
 func (u *Usecases) CreateCase(ctx context.Context) error {
 	c := domain.CreateCase()
-	if err := u.casesRepo.SaveCase(ctx, c); err != nil {
+	if err := u.storage.SaveCase(ctx, c); err != nil {
 		return fmt.Errorf("save case: %w", err)
 	}
 
@@ -63,19 +57,19 @@ func (u *Usecases) CreateCase(ctx context.Context) error {
 }
 
 func (u *Usecases) AddSlide(ctx context.Context, caseID uuid.UUID) error {
-	return u.uow.Do(ctx, func(ctx context.Context) error {
+	return u.storage.WithTx(ctx, func(ctx context.Context) error {
 		slide := domain.CreateSlide(caseID)
 
-		_, err := u.casesRepo.GetCase(ctx, caseID)
+		_, err := u.storage.GetCase(ctx, caseID)
 		if err != nil {
 			return fmt.Errorf("get case: %w", err)
 		}
 
-		if err := u.slidesRepo.SaveSlide(ctx, slide); err != nil {
+		if err := u.storage.SaveSlide(ctx, slide); err != nil {
 			return fmt.Errorf("save slide: %w", err)
 		}
 
-		if err := u.eventsStorage.Add(ctx, slide.PullEvents()); err != nil {
+		if err := u.storage.AddEvent(ctx, slide.PullEvents()); err != nil {
 			return fmt.Errorf("add events: %w", err)
 		}
 
@@ -84,19 +78,19 @@ func (u *Usecases) AddSlide(ctx context.Context, caseID uuid.UUID) error {
 }
 
 func (u *Usecases) FinishSlide(ctx context.Context, slideID uuid.UUID) error {
-	return u.uow.Do(ctx, func(ctx context.Context) error {
-		slide, err := u.slidesRepo.GetSlide(ctx, slideID)
+	return u.storage.WithTx(ctx, func(ctx context.Context) error {
+		slide, err := u.storage.GetSlide(ctx, slideID)
 		if err != nil {
 			return fmt.Errorf("get slide: %w", err)
 		}
 
 		slide.Finish()
 
-		if err := u.eventsStorage.Add(ctx, slide.PullEvents()); err != nil {
+		if err := u.storage.AddEvent(ctx, slide.PullEvents()); err != nil {
 			return fmt.Errorf("add events: %w", err)
 		}
 
-		if err := u.slidesRepo.SaveSlide(ctx, slide); err != nil {
+		if err := u.storage.SaveSlide(ctx, slide); err != nil {
 			return fmt.Errorf("save slide: %w", err)
 		}
 

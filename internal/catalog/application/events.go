@@ -28,7 +28,7 @@ func (p *eventsProcessor) Register(t domain.EventType, h EventHandler) {
 }
 
 func (p *eventsProcessor) Process(ctx context.Context) error {
-	events, err := p.storage.FetchUnpublished(ctx, maxUnpublishedEventsToFetch)
+	events, err := p.storage.FetchUnpublishedEvents(ctx, maxUnpublishedEventsToFetch)
 	if err != nil {
 		return fmt.Errorf("fetch unpublished events: %w", err)
 	}
@@ -37,7 +37,7 @@ func (p *eventsProcessor) Process(ctx context.Context) error {
 		return fmt.Errorf("publish event: %w", err)
 	}
 
-	if err := p.storage.MarkPublished(ctx, events); err != nil {
+	if err := p.storage.MarkEventPublished(ctx, events); err != nil {
 		return fmt.Errorf("mark published: %w", err)
 	}
 

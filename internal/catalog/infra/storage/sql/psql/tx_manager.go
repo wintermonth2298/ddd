@@ -1,4 +1,4 @@
-package uow
+package psql
 
 import (
 	"context"
@@ -7,23 +7,23 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type TxKey struct{}
+type txKey struct{}
 
-type SQLUnitOfWork struct {
+type TxManager struct {
 	db *sqlx.DB
 }
 
-func NewSQLUnitOfWork(db *sqlx.DB) *SQLUnitOfWork {
-	return &SQLUnitOfWork{db: db}
+func NewTxManager(db *sqlx.DB) *TxManager {
+	return &TxManager{db: db}
 }
 
-func (u *SQLUnitOfWork) Do(ctx context.Context, fn func(ctx context.Context) error) error {
+func (u *TxManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
 	tx, err := u.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	txCtx := context.WithValue(ctx, TxKey{}, tx)
+	txCtx := context.WithValue(ctx, txKey{}, tx)
 
 	if err := fn(txCtx); err != nil {
 		_ = tx.Rollback()
@@ -32,8 +32,8 @@ func (u *SQLUnitOfWork) Do(ctx context.Context, fn func(ctx context.Context) err
 	return tx.Commit()
 }
 
-func Executor(ctx context.Context, db *sqlx.DB) sqlxExecutor {
-	if tx, ok := ctx.Value(TxKey{}).(*sqlx.Tx); ok && tx != nil {
+func executor(ctx context.Context, db *sqlx.DB) sqlxExecutor {
+	if tx, ok := ctx.Value(txKey{}).(*sqlx.Tx); ok && tx != nil {
 		return tx
 	}
 	return db

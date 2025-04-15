@@ -10,7 +10,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/domain"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/mapping"
-	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/uow"
 )
 
 type SlidesRepo struct {
@@ -22,7 +21,7 @@ func NewSlidesRepo(db *sqlx.DB) *SlidesRepo {
 }
 
 func (r *SlidesRepo) GetSlidesByCaseID(ctx context.Context, caseID uuid.UUID) ([]domain.Slide, error) {
-	exec := uow.Executor(ctx, r.db)
+	exec := executor(ctx, r.db)
 
 	query := `
 		SELECT id, version, preparation_status, case_id
@@ -45,7 +44,7 @@ func (r *SlidesRepo) GetSlidesByCaseID(ctx context.Context, caseID uuid.UUID) ([
 }
 
 func (r *SlidesRepo) GetSlide(ctx context.Context, id uuid.UUID) (domain.Slide, error) {
-	exec := uow.Executor(ctx, r.db)
+	exec := executor(ctx, r.db)
 
 	var model mapping.SlideModel
 	err := exec.GetContext(ctx, &model, `
@@ -64,7 +63,7 @@ func (r *SlidesRepo) GetSlide(ctx context.Context, id uuid.UUID) (domain.Slide, 
 }
 
 func (r *SlidesRepo) SaveSlide(ctx context.Context, s domain.Slide) error {
-	exec := uow.Executor(ctx, r.db)
+	exec := executor(ctx, r.db)
 
 	model := mapping.ToModelSlide(s)
 

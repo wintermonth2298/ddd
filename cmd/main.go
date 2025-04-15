@@ -10,7 +10,6 @@ import (
 	"github.com/wintermonth2298/library-ddd/internal/catalog/domain"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/projection"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/psql"
-	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/uow"
 	"github.com/wintermonth2298/library-ddd/internal/pkg/psqlclient"
 )
 
@@ -26,21 +25,13 @@ func main() {
 	})
 	mustMigrateUp(db)
 
-	casesRepoSQL := psql.NewCasesRepo(db)
-	slidesRepoSQL := psql.NewSlidesRepo(db)
-	eventsStorageSQL := psql.NewEventsStorage(db)
-	uowSQL := uow.NewSQLUnitOfWork(db)
+	storage := psql.NewStorage(db)
 
 	service := domain.NewService()
 
 	caseProjector := projection.NewCaseProjectior(db, service, slidesRepoSQL, casesRepoSQL)
 
-	usecases := application.NewUsecases(
-		casesRepoSQL,
-		slidesRepoSQL,
-		eventsStorageSQL,
-		uowSQL,
-	)
+	usecases := application.NewUsecases(storage)
 	usecases.RegisterEventHandler(domain.EventTypeSlideCreated, caseProjector.HandleSlideCreated)
 	usecases.RegisterEventHandler(domain.EventTypeSlideUpdated, caseProjector.HandleSlideUpdated)
 

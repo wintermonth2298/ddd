@@ -7,7 +7,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/domain"
 	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/mapping"
-	"github.com/wintermonth2298/library-ddd/internal/catalog/infra/storage/sql/uow"
 )
 
 type EventsStorage struct {
@@ -19,7 +18,7 @@ func NewEventsStorage(db *sqlx.DB) *EventsStorage {
 }
 
 func (s *EventsStorage) MarkPublished(ctx context.Context, events []domain.Event) error {
-	exec := uow.Executor(ctx, s.db)
+	exec := executor(ctx, s.db)
 
 	if len(events) == 0 {
 		return nil
@@ -50,7 +49,7 @@ func (s *EventsStorage) MarkPublished(ctx context.Context, events []domain.Event
 }
 
 func (s *EventsStorage) FetchUnpublished(ctx context.Context, limit int) ([]domain.Event, error) {
-	exec := uow.Executor(ctx, s.db)
+	exec := executor(ctx, s.db)
 
 	const query = `
 		SELECT id, type, created_at, published, case_id, slide_id
@@ -75,7 +74,7 @@ func (s *EventsStorage) FetchUnpublished(ctx context.Context, limit int) ([]doma
 }
 
 func (s *EventsStorage) Add(ctx context.Context, events []domain.Event) error {
-	exec := uow.Executor(ctx, s.db)
+	exec := executor(ctx, s.db)
 
 	eventModels := make([]mapping.EventModel, 0, len(events))
 	for _, event := range events {
